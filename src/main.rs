@@ -33,7 +33,6 @@ fn main() {
         timeit!(token_classification_model.predict(&input));
 
         let token_outputs = token_classification_model.predict(&input);
-
         for token in token_outputs {
             println!("{token:?}");
         }
