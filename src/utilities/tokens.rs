@@ -16,7 +16,6 @@ pub fn bench_tonizers(output_path: &str) -> Result<Tokenizer> {
 
 /// It creates a tokenizer, adds some tokens to it, and saves it to disk
 ///
-/// A doc comment.
 /// Arguments:
 ///
 /// * `output_path`: The path to save the tokenizer to.
