@@ -27,7 +27,10 @@ fn main() {
 
     {
         println!("{}", "NER Using BERT".bold().blue());
+
         let token_classification_model = token_bert::build_model().unwrap();
+
+        timeit!(token_classification_model.predict(&input));
 
         let token_outputs = token_classification_model.predict(&input);
 
@@ -40,6 +43,8 @@ fn main() {
         println!("{}", "NER Using Roberta".bold().blue());
 
         let token_classification_model = xml_roberta::build_model().unwrap();
+
+        timeit!(token_classification_model.predict(&input));
 
         let token_outputs = token_classification_model.predict(&input);
 

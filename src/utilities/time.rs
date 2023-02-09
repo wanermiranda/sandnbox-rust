@@ -12,6 +12,6 @@ macro_rules! timeit {
             format!("{}", stringify!($expression).bold().blue()),
             format!("{:?}", start.elapsed()).italic()
         );
-        drop(result);
+        drop(result)
     };
 }
