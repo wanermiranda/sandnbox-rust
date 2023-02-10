@@ -7,7 +7,10 @@ edition = "2021"
 
 [dependencies]
 colored = "2.0.0"
+onnxruntime = "0.0.14"
 rust-bert = "0.20.0"
+scanf = "1.2.1"
 serde = "1.0.152"
 serde_json = "1.0.93"
+terminal-menu = "2.0.5"
 tokenizers = "0.13.2"
