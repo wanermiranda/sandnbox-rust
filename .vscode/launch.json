@@ -1,0 +1,73 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'sandbox-rust'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=sandbox-rust"
+                ],
+                "filter": {
+                    "name": "sandbox-rust",
+                    "kind": "lib"
+                }
+            },
+            "env": {
+                "RUST_ONNXRUNTIME_LIBRARY_PATH": "/usr/local/lib/onnx/libonnxruntime_session.a"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'sandbox-rust'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=sandbox-rust",
+                    "--package=sandbox-rust"
+                ],
+                "filter": {
+                    "name": "sandbox-rust",
+                    "kind": "bin"
+                }
+            },
+            "env": {
+                "RUST_ONNXRUNTIME_LIBRARY_PATH": "/usr/local/lib/onnx/libonnxruntime_session.a"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'sandbox-rust'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=sandbox-rust",
+                    "--package=sandbox-rust"
+                ],
+                "filter": {
+                    "name": "sandbox-rust",
+                    "kind": "bin"
+                }
+            },
+            "env": {
+                "RUST_ONNXRUNTIME_LIBRARY_PATH": "/usr/local/lib/onnx/libonnxruntime_session.a"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

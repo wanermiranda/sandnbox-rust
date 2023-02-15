@@ -1,19 +1,29 @@
+use std::env::var;
+use std::path::Path;
+
+use ndarray::{Array, ArrayBase, Dim, OwnedRepr};
 use onnxruntime::environment::Environment;
-use onnxruntime::ndarray::{Array2, Axis};
-use onnxruntime::tensor::OrtOwnedTensor;
-use onnxruntime::GraphOptimizationLevel;
+use onnxruntime::ndarray::Axis;
+use onnxruntime::tensor::ndarray_tensor::NdArrayTensor;
+use onnxruntime::{GraphOptimizationLevel, LoggingLevel};
+
 /// Reference used from NeuML ;)
 /// https://colab.research.google.com/github/neuml/txtai/blob/master/examples/18_Export_and_run_models_with_ONNX.ipynb#scrollTo=_8fdRvO1fFBm
-use std::env;
+use tokenizers::tokenizer::Tokenizer;
 
-use tokenizers::tokenizer::{Result, Tokenizer};
-
-fn tokenize(text: String, inputs: usize) -> Vec<Array2<i64>> {
+fn tokenize(
+    text: &String,
+    inputs: usize,
+) -> (
+    ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
+    ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
+    ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
+) {
     // Load tokenizer from HF Hub
     let tokenizer = Tokenizer::from_pretrained("bert-base-uncased", None).unwrap();
 
     // Encode input text
-    let encoding = tokenizer.encode(text, true).unwrap();
+    let encoding = tokenizer.encode(text.to_owned(), true).unwrap();
 
     let v1: Vec<i64> = encoding
         .get_ids()
@@ -34,60 +44,80 @@ fn tokenize(text: String, inputs: usize) -> Vec<Array2<i64>> {
         .map(|x| x as i64)
         .collect();
 
-    let ids = Array2::from_shape_vec((1, v1.len()), v1).unwrap();
-    let mask = Array2::from_shape_vec((1, v2.len()), v2).unwrap();
-    let tids = Array2::from_shape_vec((1, v3.len()), v3).unwrap();
+    let ids = Array::from_shape_vec((1, v1.len()), v1).unwrap();
+    let mask = Array::from_shape_vec((1, v2.len()), v2).unwrap();
+    let tids = Array::from_shape_vec((1, v3.len()), v3).unwrap();
 
-    return if inputs > 2 {
-        vec![ids, mask, tids]
-    } else {
-        vec![ids, mask]
-    };
+    (ids, mask, tids)
 }
 
-fn predict(text: String, softmax: bool) -> Vec<f32> {
+fn predict(text: &String, softmax: bool) -> Vec<f32> {
     // Start onnx session
-    let environment = Environment::builder().with_name("test").build().unwrap();
 
-    // Derive model path
-    let model = if softmax {
-        "text-classify.onnx"
+    let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
+
+    let builder = Environment::builder()
+        .with_name("test")
+        .with_log_level(LoggingLevel::Warning);
+
+    let builder = if let Some(path) = path.clone() {
+        builder.with_library_path(path)
     } else {
-        "embeddings.onnx"
+        builder
     };
 
-    let mut session = environment
+    let environment = builder.build().unwrap();
+    // Derive model path
+    let model = if softmax {
+        Path::new("resources/text-classify.onnx")
+    } else {
+        Path::new("resources/embeddings.onnx")
+    };
+
+    let session = environment
         .new_session_builder()
         .unwrap()
-        .with_optimization_level(GraphOptimizationLevel::Basic)
-        .unwrap()
-        .with_number_threads(1)
+        .with_graph_optimization_level(GraphOptimizationLevel::Basic)
         .unwrap()
         .with_model_from_file(model)
         .unwrap();
 
     let inputs = tokenize(text, session.inputs.len());
+    let (input_ids, attention_mask, tids) = inputs;
 
-    // Run inference and print result
-    let outputs: Vec<OrtOwnedTensor<f32, _>> = session.run(inputs).unwrap();
-    let output: &OrtOwnedTensor<f32, _> = &outputs[0];
+    let outputs = session
+        .run(vec![input_ids.into(), attention_mask.into(), tids.into()])
+        .unwrap();
 
-    let probabilities: Vec<f32>;
+    let output = outputs[0].float_array().unwrap();
+
     if softmax {
-        probabilities = output.softmax(Axis(1)).iter().copied().collect::<Vec<_>>();
+        return output
+            .softmax(Axis(1))
+            .iter()
+            .map(|y| y.to_owned())
+            .collect::<Vec<_>>();
     } else {
-        probabilities = output.iter().copied().collect::<Vec<_>>();
-    }
-
-    return probabilities;
+        return output.iter().map(|y| y.to_owned()).collect::<Vec<_>>();
+    };
 }
 
-fn test_onnx(test_str: String) -> Result<()> {
-    // Tokenize input string
-    let args: Vec<String> = env::args().collect();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_onnx_softmax() {
+        // Tokenize input string
+        let text_positive = "You are awesome".to_string();
 
-    let v1 = predict(args[1].to_string(), true);
-    println!("{:?}", v1);
+        let res_positive = predict(&text_positive, true);
+        assert!(res_positive[0] < res_positive[1]);
+        println!("{} {:?}", text_positive, res_positive);
 
-    Ok(())
+        let text_negative = "You are bad".to_string();
+
+        let res_negative = predict(&text_negative, true);
+        assert!(res_negative[0] > res_negative[1]);
+        println!("{} {:?}", text_negative, res_negative);
+    }
 }
