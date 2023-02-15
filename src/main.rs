@@ -7,6 +7,7 @@ use models::xml_roberta;
 
 mod tokens;
 
+use sandbox_rust::models::bert_onnx;
 use terminal_menu::mut_menu;
 use utilities::tokens::{bench_tonizers, generate_random_tokens};
 
@@ -76,18 +77,13 @@ fn rust_bert_models() {
 }
 
 fn onnx_models() {
-    // https://colab.research.google.com/github/neuml/txtai/blob/master/examples/18_Export_and_run_models_with_ONNX.ipynb#scrollTo=_8fdRvO1fFBm
-    //   println!(
-    //       "outputs: {:#?}",
-    //       outputs
-    //           .pop()
-    //           .unwrap()
-    //           .map_axis(ndarray::Axis(1), |x| x[0] > x[1])
-    //           .map(|x| match x {
-    //               True => "Open",
-    //               False => "Not Open",
-    //           })
-    //   );
-    //   println!("outputs: {:#?}\n", &outputs);
-    // find and display the max value with its index
+    let text_positive = "You are awesome".to_string();
+
+    let res_positive = bert_onnx::predict(&text_positive, true);
+    println!("{} {:?}", text_positive, res_positive);
+
+    let text_negative = "You are bad".to_string();
+
+    let res_negative = bert_onnx::predict(&text_negative, true);
+    println!("{} {:?}", text_negative, res_negative);
 }

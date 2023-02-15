@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 colored = "2.0.0"
-onnxruntime-sys = { path = "/opt/onnxruntime/rust/onnxruntime-sys"}
 onnxruntime = { path = "/opt/onnxruntime/rust/onnxruntime"}
 rust-bert = "0.20.0"
 rust_tokenizers = "8.0.0"

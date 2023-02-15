@@ -1741,7 +1741,6 @@ dependencies = [
  "dirs 4.0.0",
  "ndarray",
  "onnxruntime",
- "onnxruntime-sys",
  "rust-bert",
  "rust_tokenizers 8.0.0",
  "scanf",

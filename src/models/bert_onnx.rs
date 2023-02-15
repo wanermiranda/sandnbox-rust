@@ -51,7 +51,7 @@ fn tokenize(
     (ids, mask, tids)
 }
 
-fn predict(text: &String, softmax: bool) -> Vec<f32> {
+pub fn predict(text: &String, softmax: bool) -> Vec<f32> {
     // Start onnx session
 
     let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
