@@ -1,14 +1,14 @@
 mod utilities;
 use colored::Colorize;
-use scanf::scanf; // needed for time
-
-use models::xml_roberta;
-use onnxruntime::{environment, LoggingLevel};
-use terminal_menu::mut_menu;
-use utilities::tokens::{bench_tonizers, generate_random_tokens};
 
 mod models;
 use models::token_bert;
+use models::xml_roberta;
+
+mod tokens;
+
+use terminal_menu::mut_menu;
+use utilities::tokens::{bench_tonizers, generate_random_tokens};
 
 fn main() {
     use terminal_menu::{button, label, menu, run};
@@ -24,8 +24,8 @@ fn main() {
     let mm = mut_menu(&menu);
 
     match mm.selected_item_name() {
-        "rust_bert" => rust_bert_models(),
         "onnx" => onnx_models(),
+        "rust_bert" => rust_bert_models(),
         i => println!("Menu item {} not found.", i),
     }
 }
@@ -76,36 +76,18 @@ fn rust_bert_models() {
 }
 
 fn onnx_models() {
-    let builder = environment::Environment::builder()
-        .with_name("onnx_metadata")
-        .with_log_level(LoggingLevel::Verbose);
-
-    let environment = builder.build().unwrap();
-
-    // provide path to .onnx model on disk
-    let path: String = String::from(
-        "/home/gorigan/projects/sandbox-rust/resources/roberta-sequence-classification-9.onnx",
-    );
-
-    let session = environment
-        .new_session_builder()
-        .unwrap()
-        .with_model_from_file(path)
-        .unwrap();
-
-    println!("Inputs:");
-    for (index, input) in session.inputs.iter().enumerate() {
-        println!(
-            "  {}:\n    name = {}\n    type = {:?}\n    dimensions = {:?}",
-            index, input.name, input.input_type, input.dimensions
-        )
-    }
-
-    println!("Outputs:");
-    for (index, output) in session.outputs.iter().enumerate() {
-        println!(
-            "  {}:\n    name = {}\n    type = {:?}\n    dimensions = {:?}",
-            index, output.name, output.output_type, output.dimensions
-        );
-    }
+    // https://colab.research.google.com/github/neuml/txtai/blob/master/examples/18_Export_and_run_models_with_ONNX.ipynb#scrollTo=_8fdRvO1fFBm
+    //   println!(
+    //       "outputs: {:#?}",
+    //       outputs
+    //           .pop()
+    //           .unwrap()
+    //           .map_axis(ndarray::Axis(1), |x| x[0] > x[1])
+    //           .map(|x| match x {
+    //               True => "Open",
+    //               False => "Not Open",
+    //           })
+    //   );
+    //   println!("outputs: {:#?}\n", &outputs);
+    // find and display the max value with its index
 }
