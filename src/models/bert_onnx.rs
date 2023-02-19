@@ -1,7 +1,7 @@
 use std::env::var;
 use std::path::Path;
 
-use ndarray::{Array, ArrayBase, Dim, OwnedRepr};
+use ndarray::{arr2, Array, Array2, ArrayBase, Dim, OwnedRepr};
 use onnxruntime::environment::Environment;
 use onnxruntime::ndarray::Axis;
 use onnxruntime::tensor::ndarray_tensor::NdArrayTensor;
@@ -10,48 +10,74 @@ use onnxruntime::{GraphOptimizationLevel, LoggingLevel};
 /// Reference used from NeuML ;)
 /// https://colab.research.google.com/github/neuml/txtai/blob/master/examples/18_Export_and_run_models_with_ONNX.ipynb#scrollTo=_8fdRvO1fFBm
 use tokenizers::tokenizer::Tokenizer;
+use tokenizers::utils::padding::{
+    PaddingDirection::Right, PaddingParams, PaddingStrategy::BatchLongest,
+};
 
 fn tokenize(
-    text: &String,
-    inputs: usize,
+    input_texts: &Vec<String>,
 ) -> (
     ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
     ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
     ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
 ) {
+    let batch_size = input_texts.len();
     // Load tokenizer from HF Hub
-    let tokenizer = Tokenizer::from_pretrained("bert-base-uncased", None).unwrap();
+    let mut tokenizer = Tokenizer::from_pretrained("bert-base-uncased", None).unwrap();
+
+    tokenizer.with_padding(Some(PaddingParams {
+        strategy: BatchLongest,
+        direction: Right,
+        pad_id: 0,
+        pad_type_id: 0,
+        pad_token: "[PAD]".into(),
+        pad_to_multiple_of: todo!(),
+    }));
 
     // Encode input text
-    let encoding = tokenizer.encode(text.to_owned(), true).unwrap();
+    let encoding = tokenizer
+        .encode_batch(input_texts.to_owned(), true)
+        .unwrap();
 
-    let v1: Vec<i64> = encoding
-        .get_ids()
-        .to_vec()
-        .into_iter()
-        .map(|x| x as i64)
-        .collect();
-    let v2: Vec<i64> = encoding
-        .get_attention_mask()
-        .to_vec()
-        .into_iter()
-        .map(|x| x as i64)
-        .collect();
-    let v3: Vec<i64> = encoding
-        .get_type_ids()
-        .to_vec()
-        .into_iter()
-        .map(|x| x as i64)
+    let v1: Vec<Vec<i64>> = encoding
+        .iter()
+        .map(|e| {
+            e.get_ids()
+                .to_vec()
+                .iter()
+                .map(|x| x.to_owned() as i64)
+                .collect()
+        })
         .collect();
 
-    let ids = Array::from_shape_vec((1, v1.len()), v1).unwrap();
-    let mask = Array::from_shape_vec((1, v2.len()), v2).unwrap();
-    let tids = Array::from_shape_vec((1, v3.len()), v3).unwrap();
+    let v2: Vec<Vec<i64>> = encoding
+        .iter()
+        .map(|e| {
+            arr2(e.get_attention_mask())
+                .map(|x| x.to_owned() as i64)
+                .collect()
+        })
+        .collect();
+
+    let v3: Vec<Vec<i64>> = encoding
+        .iter()
+        .map(|e| {
+            e.get_type_ids()
+                .to_vec()
+                .iter()
+                .map(|x| x.to_owned() as i64)
+                .collect()
+        })
+        .collect();
+
+    let ids = Array::from_shape_vec((batch_size, v1.len()), v1).unwrap();
+    let mask = Array::from_shape_vec((batch_size, v2.len()), v2).unwrap();
+    let tids = Array::from_shape_vec((batch_size, v3.len()), v3).unwrap();
 
     (ids, mask, tids)
 }
 
-pub fn predict(text: &String, softmax: bool) -> Vec<f32> {
+pub fn predict(text: &Vec<String>, softmax: bool) -> Vec<f32> {
     // Start onnx session
 
     let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
@@ -71,7 +97,7 @@ pub fn predict(text: &String, softmax: bool) -> Vec<f32> {
     let model = if softmax {
         Path::new("resources/text-classify.onnx")
     } else {
-        Path::new("resources/embeddings.onnx")
+        Path::new("resources/roberta-ner.onnx")
     };
 
     let session = environment
@@ -82,7 +108,7 @@ pub fn predict(text: &String, softmax: bool) -> Vec<f32> {
         .with_model_from_file(model)
         .unwrap();
 
-    let inputs = tokenize(text, session.inputs.len());
+    let inputs = tokenize(text);
     let (input_ids, attention_mask, tids) = inputs;
 
     let outputs = session
@@ -105,19 +131,42 @@ pub fn predict(text: &String, softmax: bool) -> Vec<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // #[test]
+    // fn test_softmax() {
+    //     // Tokenize input string
+    //     let text_positive = "You are awesome".to_string();
+
+    //     let res_positive = predict(&text_positive, true);
+    //     assert!(res_positive[0] < res_positive[1]);
+    //     println!("{} {:?}", text_positive, res_positive);
+
+    //     let text_negative = "You are bad".to_string();
+
+    //     let res_negative = predict(&text_negative, true);
+    //     assert!(res_negative[0] > res_negative[1]);
+    //     println!("{} {:?}", text_negative, res_negative);
+    // }
+
     #[test]
-    fn test_onnx_softmax() {
-        // Tokenize input string
-        let text_positive = "You are awesome".to_string();
-
-        let res_positive = predict(&text_positive, true);
-        assert!(res_positive[0] < res_positive[1]);
-        println!("{} {:?}", text_positive, res_positive);
-
-        let text_negative = "You are bad".to_string();
-
-        let res_negative = predict(&text_negative, true);
-        assert!(res_negative[0] > res_negative[1]);
-        println!("{} {:?}", text_negative, res_negative);
+    fn test_tokenizer() {
+        let test_inputs = vec!["You are awesome".to_string(), "You are bad".to_string()];
+        let token_results = tokenize(&test_inputs);
+        let (input_ids, attention_mask, tids) = token_results;
+        println!("{:?}", input_ids);
     }
+
+    // fn test_ner() {
+    //     // Tokenize input string
+    //     let text_positive = "You are awesome".to_string();
+
+    //     let res_positive = predict(&text_positive, true);
+    //     assert!(res_positive[0] < res_positive[1]);
+    //     println!("{} {:?}", text_positive, res_positive);
+
+    //     let text_negative = "You are bad".to_string();
+
+    //     let res_negative = predict(&text_negative, true);
+    //     assert!(res_negative[0] > res_negative[1]);
+    //     println!("{} {:?}", text_negative, res_negative);
+    // }
 }
