@@ -1,7 +1,7 @@
 use std::env::var;
 use std::path::Path;
 
-use ndarray::{arr2, Array, Array2, ArrayBase, Dim, OwnedRepr};
+use ndarray::{arr3, Array, Array2, ArrayBase, Dim, IxDynImpl, OwnedRepr};
 use onnxruntime::environment::Environment;
 use onnxruntime::ndarray::Axis;
 use onnxruntime::tensor::ndarray_tensor::NdArrayTensor;
@@ -11,7 +11,7 @@ use onnxruntime::{GraphOptimizationLevel, LoggingLevel};
 /// https://colab.research.google.com/github/neuml/txtai/blob/master/examples/18_Export_and_run_models_with_ONNX.ipynb#scrollTo=_8fdRvO1fFBm
 use tokenizers::tokenizer::Tokenizer;
 use tokenizers::utils::padding::{
-    PaddingDirection::Right, PaddingParams, PaddingStrategy::BatchLongest,
+    PaddingDirection, PaddingDirection::Right, PaddingParams, PaddingStrategy::BatchLongest,
 };
 
 fn tokenize(
@@ -31,7 +31,7 @@ fn tokenize(
         pad_id: 0,
         pad_type_id: 0,
         pad_token: "[PAD]".into(),
-        pad_to_multiple_of: todo!(),
+        pad_to_multiple_of: Some(2),
     }));
 
     // Encode input text
@@ -39,45 +39,40 @@ fn tokenize(
         .encode_batch(input_texts.to_owned(), true)
         .unwrap();
 
-    let v1: Vec<Vec<i64>> = encoding
+    let max_len = encoding
         .iter()
-        .map(|e| {
-            e.get_ids()
-                .to_vec()
-                .iter()
-                .map(|x| x.to_owned() as i64)
-                .collect()
-        })
-        .collect();
+        .map(|feature| feature.get_ids().len())
+        .max()
+        .unwrap();
 
-    let v2: Vec<Vec<i64>> = encoding
-        .iter()
-        .map(|e| {
-            arr2(e.get_attention_mask())
-                .map(|x| x.to_owned() as i64)
-                .collect()
-        })
-        .collect();
+    let input_shape = (batch_size, max_len);
 
-    let v3: Vec<Vec<i64>> = encoding
-        .iter()
-        .map(|e| {
-            e.get_type_ids()
-                .to_vec()
-                .iter()
-                .map(|x| x.to_owned() as i64)
-                .collect()
-        })
-        .collect();
+    let mut masks = Array2::<i64>::zeros(input_shape);
+    let mut token_ids = Array2::<i64>::zeros(input_shape);
+    let mut type_ids = Array2::<i64>::zeros(input_shape);
 
-    let ids = Array::from_shape_vec((batch_size, v1.len()), v1).unwrap();
-    let mask = Array::from_shape_vec((batch_size, v2.len()), v2).unwrap();
-    let tids = Array::from_shape_vec((batch_size, v3.len()), v3).unwrap();
+    for (i, e) in encoding.iter().enumerate() {
+        for j in 0..max_len {
+            token_ids[[i, j]] = e.get_ids()[j].to_owned() as i64;
+            masks[[i, j]] = e.get_attention_mask()[j].to_owned() as i64;
+            type_ids[[i, j]] = e.get_type_ids()[j].to_owned() as i64;
+        }
+    }
 
-    (ids, mask, tids)
+    (token_ids, masks, type_ids)
 }
 
-pub fn predict(text: &Vec<String>, softmax: bool) -> Vec<f32> {
+fn ndarray_to_vecvec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<f32>> {
+    let rows = arr
+        .to_owned()
+        .into_raw_vec()
+        .chunks(arr.shape()[1])
+        .map(|chunk| chunk.to_vec())
+        .collect::<Vec<_>>();
+    rows
+}
+
+pub fn predict(text: &Vec<String>, softmax: bool) -> Vec<Vec<f32>> {
     // Start onnx session
 
     let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
@@ -111,41 +106,42 @@ pub fn predict(text: &Vec<String>, softmax: bool) -> Vec<f32> {
     let inputs = tokenize(text);
     let (input_ids, attention_mask, tids) = inputs;
 
-    let outputs = session
-        .run(vec![input_ids.into(), attention_mask.into(), tids.into()])
-        .unwrap();
+    let outputs = if softmax {
+        session
+            .run(vec![input_ids.into(), attention_mask.into(), tids.into()])
+            .unwrap()
+    } else {
+        session
+            .run(vec![input_ids.into(), attention_mask.into()])
+            .unwrap()
+    };
 
     let output = outputs[0].float_array().unwrap();
-
     if softmax {
-        return output
-            .softmax(Axis(1))
-            .iter()
-            .map(|y| y.to_owned())
-            .collect::<Vec<_>>();
+        return ndarray_to_vecvec(&output.softmax(Axis(1)));
     } else {
-        return output.iter().map(|y| y.to_owned()).collect::<Vec<_>>();
+        return ndarray_to_vecvec(&output.view().to_owned());
     };
 }
 
 #[cfg(test)]
 mod tests {
+    use ndarray::array;
+
     use super::*;
-    // #[test]
-    // fn test_softmax() {
-    //     // Tokenize input string
-    //     let text_positive = "You are awesome".to_string();
+    #[test]
+    fn test_softmax() {
+        // Tokenize input string
+        let text_positive = vec!["You are awesome".to_string(), "You are bad".to_string()];
 
-    //     let res_positive = predict(&text_positive, true);
-    //     assert!(res_positive[0] < res_positive[1]);
-    //     println!("{} {:?}", text_positive, res_positive);
+        let responses = predict(&text_positive, true);
+        let res_positive = responses.get(0).unwrap();
+        let res_negative = responses.get(1).unwrap();
 
-    //     let text_negative = "You are bad".to_string();
-
-    //     let res_negative = predict(&text_negative, true);
-    //     assert!(res_negative[0] > res_negative[1]);
-    //     println!("{} {:?}", text_negative, res_negative);
-    // }
+        assert!(res_positive[0] < res_positive[1]);
+        println!("{} {:?}", text_positive[0], res_positive);
+        assert!(res_negative[0] > res_negative[1]);
+    }
 
     #[test]
     fn test_tokenizer() {
@@ -153,20 +149,33 @@ mod tests {
         let token_results = tokenize(&test_inputs);
         let (input_ids, attention_mask, tids) = token_results;
         println!("{:?}", input_ids);
+        assert_eq!(
+            array![
+                [101, 2017, 2024, 12476, 102, 0],
+                [101, 2017, 2024, 2919, 102, 0]
+            ],
+            input_ids
+        );
+
+        println!("{:?}", attention_mask);
+        assert_eq!(
+            array![[1, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 0]],
+            attention_mask
+        );
+
+        println!("{:?}", tids);
+        assert_eq!(array![[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]], tids);
     }
+    #[test]
+    fn test_ner() {
+        // Tokenize input string
+        let text_positive = vec![
+            "HuggingFace is a company based in Paris and New York".to_string(),
+            "I'm Waner and work for Microsoft from Brazil".to_string(),
+        ];
 
-    // fn test_ner() {
-    //     // Tokenize input string
-    //     let text_positive = "You are awesome".to_string();
+        let responses = predict(&text_positive, false);
 
-    //     let res_positive = predict(&text_positive, true);
-    //     assert!(res_positive[0] < res_positive[1]);
-    //     println!("{} {:?}", text_positive, res_positive);
-
-    //     let text_negative = "You are bad".to_string();
-
-    //     let res_negative = predict(&text_negative, true);
-    //     assert!(res_negative[0] > res_negative[1]);
-    //     println!("{} {:?}", text_negative, res_negative);
-    // }
+        println!("{:?}", responses);
+    }
 }
