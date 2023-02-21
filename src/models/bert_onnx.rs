@@ -1,7 +1,9 @@
+use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::env::var;
 use std::path::Path;
 
-use ndarray::{arr3, Array, Array2, ArrayBase, Dim, IxDynImpl, OwnedRepr};
+use ndarray::{Array2, ArrayBase, Dim, IxDynImpl, OwnedRepr};
 use onnxruntime::environment::Environment;
 use onnxruntime::ndarray::Axis;
 use onnxruntime::tensor::ndarray_tensor::NdArrayTensor;
@@ -11,7 +13,7 @@ use onnxruntime::{GraphOptimizationLevel, LoggingLevel};
 /// https://colab.research.google.com/github/neuml/txtai/blob/master/examples/18_Export_and_run_models_with_ONNX.ipynb#scrollTo=_8fdRvO1fFBm
 use tokenizers::tokenizer::Tokenizer;
 use tokenizers::utils::padding::{
-    PaddingDirection, PaddingDirection::Right, PaddingParams, PaddingStrategy::BatchLongest,
+    PaddingDirection::Right, PaddingParams, PaddingStrategy::BatchLongest,
 };
 
 fn tokenize(
@@ -62,7 +64,7 @@ fn tokenize(
     (token_ids, masks, type_ids)
 }
 
-fn ndarray_to_vecvec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<f32>> {
+fn array2_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<f32>> {
     let rows = arr
         .to_owned()
         .into_raw_vec()
@@ -72,7 +74,22 @@ fn ndarray_to_vecvec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec
     rows
 }
 
-pub fn predict(text: &Vec<String>, softmax: bool) -> Vec<Vec<f32>> {
+fn array3_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<Vec<f32>>> {
+    let rows = arr
+        .to_owned()
+        .into_raw_vec()
+        .chunks(arr.shape()[1])
+        .map(|chunk1| {
+            chunk1
+                .chunks(arr.shape()[2])
+                .map(|chunk| chunk.to_vec())
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    rows
+}
+
+pub fn predict_sentiment(text: &Vec<String>) -> Vec<Vec<f32>> {
     // Start onnx session
 
     let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
@@ -89,11 +106,7 @@ pub fn predict(text: &Vec<String>, softmax: bool) -> Vec<Vec<f32>> {
 
     let environment = builder.build().unwrap();
     // Derive model path
-    let model = if softmax {
-        Path::new("resources/text-classify.onnx")
-    } else {
-        Path::new("resources/roberta-ner.onnx")
-    };
+    let model = Path::new("resources/text-classify.onnx");
 
     let session = environment
         .new_session_builder()
@@ -106,22 +119,79 @@ pub fn predict(text: &Vec<String>, softmax: bool) -> Vec<Vec<f32>> {
     let inputs = tokenize(text);
     let (input_ids, attention_mask, tids) = inputs;
 
-    let outputs = if softmax {
-        session
-            .run(vec![input_ids.into(), attention_mask.into(), tids.into()])
-            .unwrap()
-    } else {
-        session
-            .run(vec![input_ids.into(), attention_mask.into()])
-            .unwrap()
-    };
+    let outputs = session
+        .run(vec![input_ids.into(), attention_mask.into(), tids.into()])
+        .unwrap();
 
     let output = outputs[0].float_array().unwrap();
-    if softmax {
-        return ndarray_to_vecvec(&output.softmax(Axis(1)));
+
+    return array2_to_vec(&output.softmax(Axis(1)));
+}
+
+pub fn predict_ner(text: &Vec<String>) -> Vec<Vec<Vec<f32>>> {
+    // Start onnx session
+
+    let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
+
+    let builder = Environment::builder()
+        .with_name("test")
+        .with_log_level(LoggingLevel::Warning);
+
+    let builder = if let Some(path) = path.clone() {
+        builder.with_library_path(path)
     } else {
-        return ndarray_to_vecvec(&output.view().to_owned());
+        builder
     };
+
+    let environment = builder.build().unwrap();
+    // Derive model path
+    let model = Path::new("resources/roberta-ner.onnx");
+
+    let session = environment
+        .new_session_builder()
+        .unwrap()
+        .with_graph_optimization_level(GraphOptimizationLevel::Basic)
+        .unwrap()
+        .with_model_from_file(model)
+        .unwrap();
+
+    let inputs = tokenize(text);
+    let (input_ids, attention_mask, _) = inputs;
+
+    let outputs = session
+        .run(vec![input_ids.into(), attention_mask.into()])
+        .unwrap();
+
+    let output = outputs[0].float_array().unwrap();
+
+    return array3_to_vec(&output.view().to_owned());
+}
+
+fn parse_tokens(predictions: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<&str>> {
+    let id_labels = HashMap::from([(0, "O"), (1, "PER"), (2, "ORG"), (3, "LOC"), (4, "MISC")]);
+
+    let res = predictions
+        .iter()
+        .map(|s| {
+            s.iter()
+                .map(|t| {
+                    id_labels
+                        .get(
+                            &t.iter()
+                                .enumerate()
+                                .max_by(|(_, a), (_, b)| {
+                                    a.partial_cmp(b).unwrap_or(Ordering::Equal)
+                                })
+                                .map(|(index, _)| index)
+                                .unwrap(),
+                        )
+                        .unwrap()
+                        .to_owned()
+                })
+                .collect()
+        })
+        .collect();
+    res
 }
 
 #[cfg(test)]
@@ -134,7 +204,7 @@ mod tests {
         // Tokenize input string
         let text_positive = vec!["You are awesome".to_string(), "You are bad".to_string()];
 
-        let responses = predict(&text_positive, true);
+        let responses = predict_sentiment(&text_positive);
         let res_positive = responses.get(0).unwrap();
         let res_negative = responses.get(1).unwrap();
 
@@ -174,8 +244,8 @@ mod tests {
             "I'm Waner and work for Microsoft from Brazil".to_string(),
         ];
 
-        let responses = predict(&text_positive, false);
+        let responses = predict_ner(&text_positive);
 
-        println!("{:?}", responses);
+        println!("{:?}", parse_tokens(&responses));
     }
 }
