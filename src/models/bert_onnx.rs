@@ -75,17 +75,19 @@ fn array2_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<f32
 }
 
 fn array3_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<Vec<f32>>> {
+    dbg!(arr);
     let rows = arr
         .to_owned()
         .into_raw_vec()
-        .chunks(arr.shape()[1])
+        .chunks(arr.shape()[2])
         .map(|chunk1| {
             chunk1
-                .chunks(arr.shape()[2])
+                .chunks(arr.shape()[1])
                 .map(|chunk| chunk.to_vec())
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
+    dbg!(&rows);
     rows
 }
 
@@ -191,6 +193,8 @@ fn parse_tokens(predictions: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<&str>> {
                 .collect()
         })
         .collect();
+
+    dbg!(&res);
     res
 }
 
