@@ -25,7 +25,8 @@ fn tokenize(
 ) {
     let batch_size = input_texts.len();
     // Load tokenizer from HF Hub
-    let mut tokenizer = Tokenizer::from_pretrained("bert-base-uncased", None).unwrap();
+    let mut tokenizer =
+        Tokenizer::from_pretrained("xlm-roberta-large-finetuned-conll03-english", None).unwrap();
 
     tokenizer.with_padding(Some(PaddingParams {
         strategy: BatchLongest,
@@ -76,18 +77,18 @@ fn array2_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<f32
 
 fn array3_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<Vec<f32>>> {
     dbg!(arr);
+
     let rows = arr
         .to_owned()
         .into_raw_vec()
-        .chunks(arr.shape()[2])
+        .chunks(arr.shape()[1] * arr.shape()[2])
         .map(|chunk1| {
             chunk1
-                .chunks(arr.shape()[1])
+                .chunks(arr.shape()[2])
                 .map(|chunk| chunk.to_vec())
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
-    dbg!(&rows);
     rows
 }
 
@@ -170,7 +171,16 @@ pub fn predict_ner(text: &Vec<String>) -> Vec<Vec<Vec<f32>>> {
 }
 
 fn parse_tokens(predictions: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<&str>> {
-    let id_labels = HashMap::from([(0, "O"), (1, "PER"), (2, "ORG"), (3, "LOC"), (4, "MISC")]);
+    let id_labels = HashMap::from([
+        (0, "B-LOC"),
+        (1, "B-MISC"),
+        (2, "B-ORG"),
+        (3, "I-LOC"),
+        (4, "I-MISC"),
+        (5, "I-ORG"),
+        (6, "I-PER"),
+        (7, "O"),
+    ]);
 
     let res = predictions
         .iter()
@@ -249,7 +259,12 @@ mod tests {
         ];
 
         let responses = predict_ner(&text_positive);
-
+        println!(
+            "{:?} {:?} {:?}",
+            responses.len(),
+            responses[0].len(),
+            responses[0][0].len()
+        );
         println!("{:?}", parse_tokens(&responses));
     }
 }

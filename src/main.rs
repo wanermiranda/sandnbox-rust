@@ -77,13 +77,13 @@ fn rust_bert_models() {
 }
 
 fn onnx_models() {
-    let text_positive = "You are awesome".to_string();
+    // let text_positive = "You are awesome".to_string();
 
-    let res_positive = bert_onnx::predict_single(&text_positive, true);
-    println!("{} {:?}", text_positive, res_positive);
+    // let res_positive = bert_onnx::predict_ner(&text_positive, true);
+    // println!("{} {:?}", text_positive, res_positive);
 
-    let text_negative = "You are bad".to_string();
+    // let text_negative = "You are bad".to_string();
 
-    let res_negative = bert_onnx::predict_single(&text_negative, true);
-    println!("{} {:?}", text_negative, res_negative);
+    // let res_negative = bert_onnx::predict_single(&text_negative, true);
+    // println!("{} {:?}", text_negative, res_negative);
 }
