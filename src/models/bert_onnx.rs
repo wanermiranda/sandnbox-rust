@@ -18,6 +18,7 @@ use tokenizers::utils::padding::{
 
 fn tokenize(
     input_texts: &Vec<String>,
+    tokenizer_name: &str,
 ) -> (
     ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
     ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
@@ -25,8 +26,7 @@ fn tokenize(
 ) {
     let batch_size = input_texts.len();
     // Load tokenizer from HF Hub
-    let mut tokenizer =
-        Tokenizer::from_pretrained("xlm-roberta-large-finetuned-conll03-english", None).unwrap();
+    let mut tokenizer = Tokenizer::from_pretrained(tokenizer_name, None).unwrap();
 
     tokenizer.with_padding(Some(PaddingParams {
         strategy: BatchLongest,
@@ -119,7 +119,7 @@ pub fn predict_sentiment(text: &Vec<String>) -> Vec<Vec<f32>> {
         .with_model_from_file(model)
         .unwrap();
 
-    let inputs = tokenize(text);
+    let inputs = tokenize(text, "bert-base-uncased");
     let (input_ids, attention_mask, tids) = inputs;
 
     let outputs = session
@@ -158,7 +158,7 @@ pub fn predict_ner(text: &Vec<String>) -> Vec<Vec<Vec<f32>>> {
         .with_model_from_file(model)
         .unwrap();
 
-    let inputs = tokenize(text);
+    let inputs = tokenize(text, "xlm-roberta-large-finetuned-conll03-english");
     let (input_ids, attention_mask, _) = inputs;
 
     let outputs = session
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn test_tokenizer() {
         let test_inputs = vec!["You are awesome".to_string(), "You are bad".to_string()];
-        let token_results = tokenize(&test_inputs);
+        let token_results = tokenize(&test_inputs, "bert-base-uncased");
         let (input_ids, attention_mask, tids) = token_results;
         println!("{:?}", input_ids);
         assert_eq!(
