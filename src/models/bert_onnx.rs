@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::env::var;
 use std::path::Path;
 
-use ndarray::{Array2, ArrayBase, Dim, IxDynImpl, OwnedRepr};
+use ndarray::{Array2, ArrayBase, Dim, OwnedRepr};
 use onnxruntime::environment::Environment;
 use onnxruntime::ndarray::Axis;
 use onnxruntime::tensor::ndarray_tensor::NdArrayTensor;
@@ -15,6 +15,8 @@ use tokenizers::tokenizer::Tokenizer;
 use tokenizers::utils::padding::{
     PaddingDirection::Right, PaddingParams, PaddingStrategy::BatchLongest,
 };
+
+use crate::utilities::vec_array::{array2_to_vec, array3_to_vec};
 
 fn tokenize(
     input_texts: &Vec<String>,
@@ -38,9 +40,7 @@ fn tokenize(
     }));
 
     // Encode input text
-    let encoding = tokenizer
-        .encode_batch(input_texts.clone(), true)
-        .unwrap();
+    let encoding = tokenizer.encode_batch(input_texts.clone(), true).unwrap();
 
     let max_len = encoding
         .iter()
@@ -65,34 +65,8 @@ fn tokenize(
     (token_ids, masks, type_ids)
 }
 
-fn array2_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<f32>> {
-    let rows = arr
-        .to_owned()
-        .into_raw_vec()
-        .chunks(arr.shape()[1])
-        .map(<[f32]>::to_vec)
-        .collect::<Vec<_>>();
-    rows
-}
-
-fn array3_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<Vec<f32>>> {
-    dbg!(arr);
-
-    let rows = arr
-        .to_owned()
-        .into_raw_vec()
-        .chunks(arr.shape()[1] * arr.shape()[2])
-        .map(|chunk1| {
-            chunk1
-                .chunks(arr.shape()[2])
-                .map(<[f32]>::to_vec)
-                .collect::<Vec<_>>()
-        })
-        .collect::<Vec<_>>();
-    rows
-}
-
-#[must_use] pub fn predict_sentiment(text: &Vec<String>) -> Vec<Vec<f32>> {
+#[must_use]
+pub fn predict_sentiment(text: &Vec<String>) -> Vec<Vec<f32>> {
     // Start onnx session
 
     let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
@@ -128,10 +102,11 @@ fn array3_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<Vec
 
     let output = outputs[0].float_array().unwrap();
 
-    array2_to_vec(&output.softmax(Axis(1)))
+    array2_to_vec(&output.softmax(Axis(1)).to_owned())
 }
 
-#[must_use] pub fn predict_ner(text: &Vec<String>) -> Vec<Vec<Vec<f32>>> {
+#[must_use]
+pub fn predict_ner(text: &Vec<String>) -> Vec<Vec<Vec<f32>>> {
     // Start onnx session
 
     let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();

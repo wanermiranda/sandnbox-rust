@@ -7,7 +7,6 @@ use models::xml_roberta;
 
 mod tokens;
 
-
 use terminal_menu::mut_menu;
 use utilities::tokens::{bench_tonizers, generate_random_tokens};
 
