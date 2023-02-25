@@ -2,13 +2,14 @@ mod utilities;
 use colored::Colorize;
 
 mod models;
-use models::token_bert;
-use models::xml_roberta;
 
 mod tokens;
 
+use sandbox_rust::models::xlm_roberta_rustbert;
 use terminal_menu::mut_menu;
 use utilities::tokens::{bench_tonizers, generate_random_tokens};
+
+use crate::tokens::bert_rustbert;
 
 fn main() {
     use terminal_menu::{button, label, menu, run};
@@ -50,7 +51,7 @@ fn rust_bert_models() {
     {
         println!("{}", "NER Using BERT".bold().blue());
 
-        let token_classification_model = token_bert::build_model().unwrap();
+        let token_classification_model = bert_rustbert::build_model().unwrap();
 
         timeit!(token_classification_model.predict(&input));
 
@@ -63,7 +64,7 @@ fn rust_bert_models() {
     {
         println!("{}", "NER Using Roberta".bold().blue());
 
-        let token_classification_model = xml_roberta::build_model().unwrap();
+        let token_classification_model = xlm_roberta_rustbert::build_model().unwrap();
 
         timeit!(token_classification_model.predict(&input));
 
