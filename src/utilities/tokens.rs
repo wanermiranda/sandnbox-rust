@@ -40,7 +40,7 @@ pub fn generate_random_tokens(output_path: &str, num_tokens: u32) -> Result<()> 
     // Mix special and not special
     // You can make sure ids are in order, and special status is correct.
     let tokens: Vec<_> = (0..num_tokens)
-        .map(|i| AddedToken::from(format!("[SPECIAL_{}]", i), i % 2 == 0))
+        .map(|i| AddedToken::from(format!("[SPECIAL_{i}]"), i % 2 == 0))
         .collect();
     tokenizer.add_tokens(&tokens);
     tokenizer.save(output_path, true)

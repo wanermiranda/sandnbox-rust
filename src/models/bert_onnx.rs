@@ -9,7 +9,7 @@ use onnxruntime::ndarray::Axis;
 use onnxruntime::tensor::ndarray_tensor::NdArrayTensor;
 use onnxruntime::{GraphOptimizationLevel, LoggingLevel};
 
-/// Reference used from NeuML ;)
+/// Reference used from `NeuML` ;)
 /// https://colab.research.google.com/github/neuml/txtai/blob/master/examples/18_Export_and_run_models_with_ONNX.ipynb#scrollTo=_8fdRvO1fFBm
 use tokenizers::tokenizer::Tokenizer;
 use tokenizers::utils::padding::{
@@ -39,7 +39,7 @@ fn tokenize(
 
     // Encode input text
     let encoding = tokenizer
-        .encode_batch(input_texts.to_owned(), true)
+        .encode_batch(input_texts.clone(), true)
         .unwrap();
 
     let max_len = encoding
@@ -56,9 +56,9 @@ fn tokenize(
 
     for (i, e) in encoding.iter().enumerate() {
         for j in 0..max_len {
-            token_ids[[i, j]] = e.get_ids()[j].to_owned() as i64;
-            masks[[i, j]] = e.get_attention_mask()[j].to_owned() as i64;
-            type_ids[[i, j]] = e.get_type_ids()[j].to_owned() as i64;
+            token_ids[[i, j]] = i64::from(e.get_ids()[j].to_owned());
+            masks[[i, j]] = i64::from(e.get_attention_mask()[j].to_owned());
+            type_ids[[i, j]] = i64::from(e.get_type_ids()[j].to_owned());
         }
     }
 
@@ -70,7 +70,7 @@ fn array2_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<f32
         .to_owned()
         .into_raw_vec()
         .chunks(arr.shape()[1])
-        .map(|chunk| chunk.to_vec())
+        .map(<[f32]>::to_vec)
         .collect::<Vec<_>>();
     rows
 }
@@ -85,14 +85,14 @@ fn array3_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<Vec
         .map(|chunk1| {
             chunk1
                 .chunks(arr.shape()[2])
-                .map(|chunk| chunk.to_vec())
+                .map(<[f32]>::to_vec)
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
     rows
 }
 
-pub fn predict_sentiment(text: &Vec<String>) -> Vec<Vec<f32>> {
+#[must_use] pub fn predict_sentiment(text: &Vec<String>) -> Vec<Vec<f32>> {
     // Start onnx session
 
     let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
@@ -101,7 +101,7 @@ pub fn predict_sentiment(text: &Vec<String>) -> Vec<Vec<f32>> {
         .with_name("test")
         .with_log_level(LoggingLevel::Warning);
 
-    let builder = if let Some(path) = path.clone() {
+    let builder = if let Some(path) = path {
         builder.with_library_path(path)
     } else {
         builder
@@ -128,10 +128,10 @@ pub fn predict_sentiment(text: &Vec<String>) -> Vec<Vec<f32>> {
 
     let output = outputs[0].float_array().unwrap();
 
-    return array2_to_vec(&output.softmax(Axis(1)));
+    array2_to_vec(&output.softmax(Axis(1)))
 }
 
-pub fn predict_ner(text: &Vec<String>) -> Vec<Vec<Vec<f32>>> {
+#[must_use] pub fn predict_ner(text: &Vec<String>) -> Vec<Vec<Vec<f32>>> {
     // Start onnx session
 
     let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
@@ -140,7 +140,7 @@ pub fn predict_ner(text: &Vec<String>) -> Vec<Vec<Vec<f32>>> {
         .with_name("test")
         .with_log_level(LoggingLevel::Warning);
 
-    let builder = if let Some(path) = path.clone() {
+    let builder = if let Some(path) = path {
         builder.with_library_path(path)
     } else {
         builder
@@ -232,7 +232,7 @@ mod tests {
         let test_inputs = vec!["You are awesome".to_string(), "You are bad".to_string()];
         let token_results = tokenize(&test_inputs, "bert-base-uncased");
         let (input_ids, attention_mask, tids) = token_results;
-        println!("{:?}", input_ids);
+        println!("{input_ids:?}");
         assert_eq!(
             array![
                 [101, 2017, 2024, 12476, 102, 0],
@@ -241,13 +241,13 @@ mod tests {
             input_ids
         );
 
-        println!("{:?}", attention_mask);
+        println!("{attention_mask:?}");
         assert_eq!(
             array![[1, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 0]],
             attention_mask
         );
 
-        println!("{:?}", tids);
+        println!("{tids:?}");
         assert_eq!(array![[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]], tids);
     }
     #[test]

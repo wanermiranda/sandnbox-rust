@@ -7,7 +7,7 @@ use models::xml_roberta;
 
 mod tokens;
 
-use sandbox_rust::models::bert_onnx;
+
 use terminal_menu::mut_menu;
 use utilities::tokens::{bench_tonizers, generate_random_tokens};
 
@@ -27,7 +27,7 @@ fn main() {
     match mm.selected_item_name() {
         "onnx" => onnx_models(),
         "rust_bert" => rust_bert_models(),
-        i => println!("Menu item {} not found.", i),
+        i => println!("Menu item {i} not found."),
     }
 }
 

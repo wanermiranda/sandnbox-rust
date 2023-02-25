@@ -15,7 +15,7 @@
 /// assert!(cosine_similarity(&v2, &v2) == 1.0);
 /// assert_eq!(cosine_similarity(&v1, &v2), 0.0);
 /// ```
-pub fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f64 {
+#[must_use] pub fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f64 {
     let mut dot = 0.0;
     let mut norm1 = 0.0;
     let mut norm2 = 0.0;
@@ -25,18 +25,18 @@ pub fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f64 {
             dot += v1[x] * v2[x];
         }
         if v1[x] > 0.0 {
-            norm1 += v1[x].powf(2.0);
+            norm1 += v1[x].powi(2);
         }
 
         if v2[x] > 0.0 {
-            norm2 += v2[x].powf(2.0);
+            norm2 += v2[x].powi(2);
         }
     }
 
     if norm1 * norm2 == 0.0 {
-        return 0.0;
+        0.0
     } else {
-        return (dot / (norm1.sqrt() * norm2.sqrt())).into();
+        (dot / (norm1.sqrt() * norm2.sqrt())).into()
     }
 }
 

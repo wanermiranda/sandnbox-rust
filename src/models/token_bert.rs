@@ -14,7 +14,7 @@ use rust_bert::RustBertError;
 ///
 /// Returns:
 ///
-/// A NERModel
+/// A `NERModel`
 pub fn build_model() -> Result<NERModel, RustBertError> {
     let config = TokenClassificationConfig::new(
         ModelType::Bert,

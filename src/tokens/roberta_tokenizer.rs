@@ -24,7 +24,7 @@ pub fn download_file_to_cache(src: &str) -> Result<PathBuf, Error> {
 ///
 /// Returns:
 ///
-/// A RobertaTokenizer
+/// A `RobertaTokenizer`
 ///
 /// example:
 ///
