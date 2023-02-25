@@ -1,5 +1,14 @@
 use ndarray::{ArrayBase, Dim, IxDynImpl, OwnedRepr};
 
+/// It takes a 2D array and returns a vector of vectors of floats
+///
+/// Arguments:
+///
+/// * `arr`: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>
+///
+/// Returns:
+///
+/// A vector of vectors of f32s.
 pub fn array2_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<f32>> {
     let rows = arr
         .to_owned()
@@ -10,6 +19,16 @@ pub fn array2_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec
     rows
 }
 
+/// It takes a 3D array and returns a vector of vectors of vectors of floats
+///
+/// Arguments:
+///
+/// * `arr`: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>
+///
+/// Returns:
+///
+/// A vector of vectors of f32s.
+#[must_use]
 pub fn array3_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<Vec<f32>>> {
     dbg!(arr);
 
