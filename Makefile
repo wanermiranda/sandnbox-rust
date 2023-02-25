@@ -1,6 +1,6 @@
 tidy: 
 	cargo fmt
-	cargo clippy --fix --allow-dirty -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used -W clippy::expect_used 
+	cargo clippy 
 
 test: 
 	cargo test -- \

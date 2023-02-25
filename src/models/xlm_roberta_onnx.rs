@@ -15,7 +15,7 @@ use onnxruntime::{GraphOptimizationLevel, LoggingLevel};
 /// Reference used from `NeuML` ;)
 /// https://colab.research.google.com/github/neuml/txtai/blob/master/examples/18_Export_and_run_models_with_ONNX.ipynb#scrollTo=_8fdRvO1fFBm
 
-pub fn predict_sentiment(text: &Vec<&str>) -> Vec<Vec<f32>> {
+pub fn predict_sentiment(text: &[&str]) -> Vec<Vec<f32>> {
     // Start onnx session
 
     let path = var("RUST_ONNXRUNTIME_LIBRARY_PATH").ok();
@@ -60,7 +60,7 @@ where
 {
     // Start onnx session
 
-    let inputs = tokenize(text.into(), "xlm-roberta-large-finetuned-conll03-english");
+    let inputs = tokenize(text, "xlm-roberta-large-finetuned-conll03-english");
     let (input_ids, attention_mask, _) = inputs;
 
     let outputs = session

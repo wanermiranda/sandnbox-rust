@@ -3,7 +3,7 @@
 macro_rules! timeit {
     ($expression:expr) => {
         let start = std::time::Instant::now();
-        let result = $expression;
+        let _result = $expression;
 
         "this is blue".blue();
 
@@ -12,6 +12,5 @@ macro_rules! timeit {
             format!("{}", stringify!($expression).bold().blue()),
             format!("{:?}", start.elapsed()).italic()
         );
-        drop(result)
     };
 }

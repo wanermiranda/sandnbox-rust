@@ -16,7 +16,7 @@
 /// assert_eq!(cosine_similarity(&v1, &v2), 0.0);
 /// ```
 #[must_use]
-pub fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f64 {
+pub fn cosine_similarity(v1: &[f32], v2: &[f32]) -> f64 {
     let mut dot = 0.0;
     let mut norm1 = 0.0;
     let mut norm2 = 0.0;

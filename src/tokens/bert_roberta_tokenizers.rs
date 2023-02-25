@@ -4,14 +4,13 @@ use tokenizers::utils::padding::{
     PaddingDirection::Right, PaddingParams, PaddingStrategy::BatchLongest,
 };
 
-pub fn tokenize<S>(
-    input_texts: &[S],
-    tokenizer_name: &str,
-) -> (
+pub type Embeddings = (
     ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
     ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
     ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
-)
+);
+
+pub fn tokenize<S>(input_texts: &[S], tokenizer_name: &str) -> Embeddings
 where
     S: AsRef<str>,
 {
