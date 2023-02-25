@@ -1,3 +1,2 @@
-pub mod bert_onnx;
-pub mod token_bert;
-pub mod xml_roberta;
+pub mod xlm_roberta_onnx;
+pub mod xlm_roberta_rustbert;

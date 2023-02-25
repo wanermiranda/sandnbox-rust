@@ -1,6 +1,7 @@
-use rust_tokenizers::{error::TokenizerError, tokenizer::RobertaTokenizer};
-
 use cached_path::{Cache, Error, ProgressBar};
+use rust_tokenizers::tokenizer::MultiThreadedTokenizer;
+
+use rust_tokenizers::{error::TokenizerError, tokenizer::RobertaTokenizer};
 use std::path::PathBuf;
 
 pub fn download_file_to_cache(src: &str) -> Result<PathBuf, Error> {
@@ -26,18 +27,7 @@ pub fn download_file_to_cache(src: &str) -> Result<PathBuf, Error> {
 ///
 /// A `RobertaTokenizer`
 ///
-/// example:
-///
-/// ```
-/// let tokenenizer = build_tokenizer().unwrap();
-/// let text_list = = [
-///        "My name is Amélie. I live in Москва.",
-///        "Chongqing is a city in China.",
-///        "Meu nome é Waner e moro no Brasil.",
-///        "My name is Mario and I live in Canada.",
-///    ];
-/// tokenizer.tokenize_list(text_list);
-/// ```
+
 pub fn build_tokenizer() -> Result<RobertaTokenizer, TokenizerError> {
     let lower_case = false;
     let add_prefix_space = true;
@@ -53,12 +43,28 @@ pub fn build_tokenizer() -> Result<RobertaTokenizer, TokenizerError> {
     .unwrap();
 
     let tokenizer = RobertaTokenizer::from_file(
-        vocab_path,  // "/home/gorigan/projects/sandbox-rust/resources/roberta-base-vocab.json",
-        merges_path, // "/home/gorigan/projects/sandbox-rust/resources/roberta-base-sentencepiece.bpe.model",
+        vocab_path,  // "resources/roberta-base-vocab.json",
+        merges_path, // "resources/roberta-base-sentencepiece.bpe.model",
         lower_case,
         add_prefix_space,
     )
     .unwrap();
 
     Ok(tokenizer)
+}
+
+mod tests {
+
+    use super::*;
+    #[test]
+    fn test_roberta_tokenizer_rustbert() {
+        let ltokenenizer = build_tokenizer().unwrap();
+        let text_list = [
+            "My name is Amélie. I live in Москва.",
+            "Chongqing is a city in China.",
+            "Meu nome é Waner e moro no Brasil.",
+            "My name is Mario and I live in Canada.",
+        ];
+        ltokenenizer.tokenize_list(&text_list);
+    }
 }
