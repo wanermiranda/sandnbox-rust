@@ -30,8 +30,6 @@ pub fn array2_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec
 /// A vector of vectors of f32s.
 #[must_use]
 pub fn array3_to_vec(arr: &ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) -> Vec<Vec<Vec<f32>>> {
-    dbg!(arr);
-
     let rows = arr
         .to_owned()
         .into_raw_vec()

@@ -26,7 +26,7 @@ fn main() {
     let mm = mut_menu(&menu);
 
     match mm.selected_item_name() {
-        "onnx" => ner_models(),
+        "ner_models" => ner_models(),
         "others" => other_models(),
         i => println!("Menu item {i} not found."),
     }
@@ -71,6 +71,8 @@ fn ner_models() {
         println!("{}", "NER Using Roberta onnx".bold().blue());
 
         let token_classification_model = xlm_roberta_onnx::build_model();
+        // Warmup
+        xlm_roberta_onnx::predict(&input, &token_classification_model);
 
         timeit!(xlm_roberta_onnx::predict(
             &input,
