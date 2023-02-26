@@ -1,21 +1,10 @@
-use cached_path::{Cache, Error, ProgressBar};
-use rust_tokenizers::tokenizer::MultiThreadedTokenizer;
+#[allow(unused_imports)]
+use rust_tokenizers::{
+    error::TokenizerError,
+    tokenizer::{MultiThreadedTokenizer, RobertaTokenizer},
+};
 
-use rust_tokenizers::{error::TokenizerError, tokenizer::RobertaTokenizer};
-use std::path::PathBuf;
-
-pub fn download_file_to_cache(src: &str) -> Result<PathBuf, Error> {
-    let mut cache_dir = dirs::home_dir().unwrap();
-    cache_dir.push(".cache");
-    cache_dir.push(".rust_tokenizers");
-
-    let cached_path = Cache::builder()
-        .dir(cache_dir)
-        .progress_bar(Some(ProgressBar::Light))
-        .build()?
-        .cached_path(src)?;
-    Ok(cached_path)
-}
+use crate::utilities::files::download_file_to_cache;
 
 // Define a struct for the RoBERTa tokenizer
 // Initialize the RoBERTa tokenizer
@@ -27,7 +16,7 @@ pub fn download_file_to_cache(src: &str) -> Result<PathBuf, Error> {
 ///
 /// A `RobertaTokenizer`
 ///
-
+#[allow(dead_code)]
 pub fn build_tokenizer() -> Result<RobertaTokenizer, TokenizerError> {
     let lower_case = false;
     let add_prefix_space = true;
@@ -53,6 +42,7 @@ pub fn build_tokenizer() -> Result<RobertaTokenizer, TokenizerError> {
     Ok(tokenizer)
 }
 
+#[cfg(test)]
 mod tests {
 
     use super::*;

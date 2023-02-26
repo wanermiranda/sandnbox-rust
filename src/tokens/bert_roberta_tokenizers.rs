@@ -55,6 +55,7 @@ where
     (token_ids, masks, type_ids)
 }
 
+#[cfg(test)]
 mod tests {
     use ndarray::array;
 

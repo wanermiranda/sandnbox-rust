@@ -99,7 +99,7 @@ pub fn build_model() -> Session {
     session
 }
 
-fn parse_tokens(predictions: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<&str>> {
+pub fn parse_tokens(predictions: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<&str>> {
     let id_labels = HashMap::from([
         (0, "B-LOC"),
         (1, "B-MISC"),

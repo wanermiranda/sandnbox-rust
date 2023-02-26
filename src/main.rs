@@ -1,18 +1,16 @@
+mod models;
+mod tokens;
 mod utilities;
 use colored::Colorize;
 
-mod models;
-
-mod tokens;
-
-use sandbox_rust::models::{
+use models::{
     xlm_roberta_onnx::{self, predict_sentiment},
     xlm_roberta_rustbert,
 };
 use terminal_menu::mut_menu;
 use utilities::tokens::{bench_tonizers, generate_random_tokens};
 
-use crate::tokens::bert_rustbert;
+use tokens::bert_rustbert;
 
 fn main() {
     use terminal_menu::{button, label, menu, run};
@@ -81,7 +79,8 @@ fn ner_models() {
 
         let token_outputs = xlm_roberta_onnx::predict(&input, &token_classification_model);
 
-        for token in token_outputs {
+        let parsed_ouputs = xlm_roberta_onnx::parse_tokens(&token_outputs);
+        for token in parsed_ouputs {
             println!("{token:?}");
         }
     }
